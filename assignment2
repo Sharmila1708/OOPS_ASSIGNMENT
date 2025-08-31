@@ -1,0 +1,74 @@
+import java.lang.reflect.*;
+import java.util.*;
+
+// Step 1: Common Interface
+interface FileConverter {
+    void convert(String inputFile, String outputFile);
+}
+
+// Step 2: Plugin Implementations
+class PDFtoTXTConverter implements FileConverter {
+    public void convert(String inputFile, String outputFile) {
+        System.out.println("Converting PDF file: " + inputFile + " to TXT: " + outputFile);
+    }
+}
+
+class JPGtoPNGConverter implements FileConverter {
+    public void convert(String inputFile, String outputFile) {
+        System.out.println("Converting JPG file: " + inputFile + " to PNG: " + outputFile);
+    }
+}
+
+// Step 3: Plugin Loader using Reflection
+class PluginLoader {
+    public static FileConverter loadPlugin(String className) throws Exception {
+        Class<?> clazz = Class.forName(className);
+        return (FileConverter) clazz.getDeclaredConstructor().newInstance();
+    }
+}
+
+// Step 4: Dynamic Proxy Handler
+class ConverterProxyHandler implements InvocationHandler {
+    private final FileConverter converter;
+
+    public ConverterProxyHandler(FileConverter converter) {
+        this.converter = converter;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        System.out.println("[Proxy] Starting conversion...");
+        Object result = method.invoke(converter, args);
+        System.out.println("[Proxy] Conversion completed successfully.");
+        return result;
+    }
+}
+
+// Step 5: Main Program
+public class PluginBasedFileConverter {
+    public static void main(String[] args) {
+        try {
+            Scanner sc = new Scanner(System.in);
+            System.out.println("Choose Converter: \n1. PDFtoTXT \n2. JPGtoPNG");
+            int choice = sc.nextInt();
+
+            String pluginClass = (choice == 1) ? "PDFtoTXTConverter" : "JPGtoPNGConverter";
+
+            // Load Plugin dynamically
+            FileConverter converter = PluginLoader.loadPlugin(pluginClass);
+
+            // Wrap with Proxy
+            FileConverter proxyConverter = (FileConverter) Proxy.newProxyInstance(
+                    converter.getClass().getClassLoader(),
+                    new Class[]{FileConverter.class},
+                    new ConverterProxyHandler(converter)
+            );
+
+            // Perform conversion
+            proxyConverter.convert("inputFile", "outputFile");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
